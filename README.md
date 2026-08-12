@@ -335,25 +335,7 @@ Two bandwidths were investigated:
 
 ## GP Predictive Mean
 
-The GP predictive mean is:
 
-$$
-\mu(x_*) =
-K(x_*,X)
-\left[
-K(X,X)+\sigma_n^2 I
-\right]^{-1}
-y
-$$
-
-where:
-
-* $K(X,X)$ is the training kernel matrix.
-* $K(x_*,X)$ is the kernel between the new point and training locations.
-* $\sigma_n^2$ is the noise variance.
-* $y$ is the vector of observed temperatures.
-
----
 
 ## GP Predictive Variance
 

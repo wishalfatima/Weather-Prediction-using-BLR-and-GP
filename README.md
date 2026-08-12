@@ -256,29 +256,6 @@ The BLR model was trained using:
 
 ---
 
-## Prediction
-
-For a new location $x_*$, the predictive mean is:
-
-$$
-\mu(x_*) = x_*^T m_N
-$$
-
-The predictive variance is:
-
-$$
-\sigma^2(x_*) =
-\frac{1}{\beta}
-+
-x_*^T S_N x_*
-$$
-
-Therefore, BLR provides both:
-
-* Expected temperature
-* Predictive uncertainty
-
----
 
 ## BLR Prediction Characteristics
 

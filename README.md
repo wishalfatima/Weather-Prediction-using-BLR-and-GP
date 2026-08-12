@@ -872,22 +872,12 @@ Possible extensions of this project include:
 
 ---
 
-# 18. Project Structure
-
-```text
-Weather-Prediction-using-BLR-and-GP/
-│
-├── weather_assignment.ipynb
-├── requirements.txt
-├── README.md
-└── weather_data.h5
-```
 
 > The dataset file may not be included in the GitHub repository because of its size. Place the provided `weather_data.h5` file in the project directory before running the notebook.
 
 ---
 
-# 19. Installation
+# 18. Installation
 
 Clone the repository:
 
@@ -909,7 +899,7 @@ pip install -r requirements.txt
 
 ---
 
-# 20. Requirements
+# 19. Requirements
 
 The project uses the following Python libraries:
 
@@ -926,7 +916,7 @@ jupyter
 
 ---
 
-# 21. Running the Project
+# 20. Running the Project
 
 Place the dataset:
 
@@ -965,7 +955,7 @@ The notebook contains the implementation and experiments for:
 
 ---
 
-# 22. Visualizations
+# 21. Visualizations
 
 The notebook generates visualizations including:
 
@@ -986,7 +976,7 @@ The notebook generates visualizations including:
 
 ---
 
-# 23. Main Results at a Glance
+# 22. Main Results at a Glance
 
 | Model / Experiment                 | Main Result              |
 | ---------------------------------- | ------------------------ |
@@ -1004,7 +994,7 @@ The notebook generates visualizations including:
 
 ---
 
-# 24. Conclusion
+# 23. Conclusion
 
 This project demonstrates the application of probabilistic machine learning to spatial temperature prediction across Austria.
 

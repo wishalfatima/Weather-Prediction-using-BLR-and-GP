@@ -269,13 +269,14 @@ where:
 * $\ell$ is the length scale or bandwidth.
 * $x$ and $x'$ are two input locations.
 
+
 The GP predictive mean is:
 
 $$
 \mu(x_*) =
 K(x_*,X)
 \left[
-K(X,X)+\sigma_n^2I
+K(X,X)+\sigma_n^2 I
 \right]^{-1}
 y
 $$
@@ -285,17 +286,13 @@ The predictive variance is:
 $$
 \sigma^2(x_*) =
 k(x_*,x_*)
-----------
-
+-
 K(x_*,X)
 \left[
-K(X,X)+\sigma_n^2I
+K(X,X)+\sigma_n^2 I
 \right]^{-1}
 K(X,x_*)
 $$
-
-where $\sigma_n^2$ represents the observation-noise variance.
-
 ---
 
 # 5. GP Bandwidth Experiments

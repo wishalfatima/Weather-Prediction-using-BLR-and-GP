@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+
+.ipynb_checkpoints/
+
+.venv/
+venv/
+env/
+
+*.h5
+*.hdf5
+
+.DS_Store
+
+anaconda_projects/

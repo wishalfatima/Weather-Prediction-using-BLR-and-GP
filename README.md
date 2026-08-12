@@ -1,395 +1,771 @@
-Probabilistic Weather Forecasting with Bayesian Linear Regression and Gaussian Processes
 
-A probabilistic weather forecasting project implementing Bayesian Linear Regression (BLR) and Gaussian Process Regression (GP) from scratch using NumPy. The project predicts temperature across Austria from weather-station observations and uses predictive uncertainty for ice-warning detection and active learning for optimal weather-station placement.
 
-This project was completed as part of the Probabilistic Artificial Intelligence course at the University of Vienna.
+**Probabilistic Weather Forecasting with Bayesian Linear Regression (BLR) and Gaussian Processes (GP)**
 
-Overview
+This project implements probabilistic temperature prediction across Austria using **Bayesian Linear Regression** and **Gaussian Process Regression**, both implemented from scratch using NumPy.
 
-The project investigates how different probabilistic regression models can be used for spatial temperature prediction across Austria.
+The project was completed as part of the **Probabilistic Artificial Intelligence** course at the **University of Vienna**.
 
-The main objectives are:
+The main goals are to:
 
-Implement Bayesian Linear Regression from scratch.
-Implement Gaussian Process Regression with an RBF kernel from scratch.
-Predict temperature at 10,000 locations across Austria.
-Compare BLR and GP in terms of accuracy and uncertainty.
-Develop a probabilistic ice-warning system.
-Use active learning to identify informative locations for new weather stations.
-Analyze how spatial distance and altitude affect predictive uncertainty.
-Evaluate the computational trade-off between BLR and GP.
+* Predict temperature across Austria from weather-station observations.
+* Compare Bayesian Linear Regression and Gaussian Processes.
+* Quantify predictive uncertainty.
+* Develop a probabilistic ice-warning system.
+* Use active learning to identify informative locations for additional weather stations.
+* Investigate the relationship between spatial coverage, altitude, and predictive uncertainty.
+* Compare the computational cost of BLR and GP.
 
-The project uses observations from 199 weather stations across Austria.
+---
 
-Project Structure
+## Overview
+
+The project uses temperature observations from **199 weather stations across Austria**.
+
+The models use three geographic features:
+
+* Longitude
+* Latitude
+* Altitude
+
+A spatial prediction grid containing **10,000 locations** is then used to generate temperature predictions across Austria.
+
+Unlike conventional deterministic regression, both models provide probabilistic predictions, allowing the project to estimate not only the expected temperature but also the uncertainty associated with each prediction.
+
+---
+
+# Dataset
+
+The dataset contains temperature measurements from **199 weather stations across Austria**.
+
+## Training Data
+
+* **2,017 time steps**
+* **199 weather stations**
+* 10-minute temporal resolution
+* Training period: **9 March – 23 March 2026**
+
+## Test Data
+
+* **1,439 time steps**
+* **199 weather stations**
+* Test period: **23 March – 1 April 2026**
+
+## Spatial Prediction Grid
+
+Predictions are generated over a regular grid covering Austria.
+
+| Property          |             Value |
+| ----------------- | ----------------: |
+| Grid size         |         100 × 100 |
+| Total grid points |            10,000 |
+| Longitude range   |  9.000° – 17.500° |
+| Latitude range    | 46.000° – 49.500° |
+
+The resulting grid contains **10,000 prediction locations**.
+
+For each location, the following features are available:
+
+| Feature   | Description                     |
+| --------- | ------------------------------- |
+| Longitude | East–west geographic position   |
+| Latitude  | North–south geographic position |
+| Altitude  | Elevation above sea level       |
+
+The station feature matrix has shape:
+
+```text
+199 × 3
+```
+
+and the prediction-grid feature matrix has shape:
+
+```text
+10,000 × 3
+```
+
+---
+
+# Project Structure
+
+```text
 Weather-Prediction-using-BLR-and-GP/
 │
 ├── weather_assignment.ipynb
 ├── requirements.txt
 ├── weather_data.h5
 └── README.md
+```
 
-Note: The dataset is not included in the GitHub repository if its size or distribution restrictions prevent it from being uploaded. See the Dataset section below.
+> **Note:** The dataset may not be included in the GitHub repository because of its size or distribution restrictions. If `weather_data.h5` is not included, it must be obtained separately before running the notebook.
 
-Dataset
+---
 
-The dataset contains temperature observations from 199 weather stations across Austria.
+# Methodology
 
-Training Data
-2,017 time steps
-199 weather stations
-10-minute temporal resolution
-Training period: 9 March – 23 March 2026
-Test Data
-1,439 time steps
-199 weather stations
-Test period: 23 March – 1 April 2026
-Spatial Prediction Grid
+The project consists of four main components:
 
-Predictions are generated over a regular grid covering Austria:
+1. Data exploration and feature engineering
+2. Bayesian Linear Regression
+3. Gaussian Process Regression
+4. Ice-warning and active-learning applications
 
-Property	Value
-Grid size	100 × 100
-Total grid points	10,000
-Longitude range	9.000° – 17.500°
-Latitude range	46.000° – 49.500°
+---
 
-For each grid point, three features are used:
+# 1. Data Exploration and Feature Engineering
 
-Longitude
-Latitude
-Altitude
-Methodology
+## Weather Station Distribution
 
-The project consists of four main components.
+The 199 weather stations are distributed across Austria with varying spatial density.
 
-1. Bayesian Linear Regression
+The station locations are visualized using their longitude and latitude coordinates to understand the geographic coverage of the available observations.
 
-Bayesian Linear Regression is implemented from scratch using NumPy.
+## Temperature Analysis
 
-The model assumes a Gaussian prior over the weights:
+A two-day temperature period at **station 5 (Freistadt)** was examined.
 
-w∼N(0,α
-−1
-I)
+The observed temperature statistics were:
 
-and a Gaussian likelihood:
+| Statistic                 |     Value |
+| ------------------------- | --------: |
+| Minimum temperature       |   -0.60°C |
+| Maximum temperature       |   16.40°C |
+| Average temperature       |    6.37°C |
+| Temperature range         |   17.00°C |
+| Time below freezing       | 3.2 hours |
+| Percentage below freezing |      6.6% |
 
-y∼N(Xw,β
-−1
-I)
+The time series shows clear **diurnal temperature cycles**, with temperatures generally increasing during the day and decreasing at night.
 
-The posterior parameters are:
+Periods below 0°C are particularly relevant for the ice-warning application.
 
-S
-N
-	​
+---
 
-=(αI+βX
-T
-X)
-−1
-m
-N
-	​
+# 2. Feature Engineering
 
-=βS
-N
-	​
+Three geographic features were extracted from the weather stations:
 
-X
-T
-y
+* Longitude
+* Latitude
+* Altitude
 
-For each prediction location, the model provides both:
+The observed ranges were:
 
-Predictive mean
-Predictive variance
+| Feature   |             Range |
+| --------- | ----------------: |
+| Longitude |  9.610° – 16.845° |
+| Latitude  | 46.444° – 48.955° |
+| Altitude  |   116 m – 3,437 m |
 
-The input features are standardized using StandardScaler.
+The features were standardized using `StandardScaler`.
 
-2. Gaussian Process Regression
+The scaler was fitted using the weather-station features and then applied to the prediction grid.
 
-A Gaussian Process is implemented from scratch using NumPy with an RBF kernel:
+### Feature Summary
 
-k(x,x
-′
-)=σ
-f
-2
-	​
+| Property               | Value                         |
+| ---------------------- | ----------------------------- |
+| Input features         | Longitude, Latitude, Altitude |
+| Station feature matrix | 199 × 3                       |
+| Grid feature matrix    | 10,000 × 3                    |
+| Target                 | Temperature (°C)              |
+| Normalization          | StandardScaler                |
 
-exp(−
-2ℓ
-2
-∥x−x
-′
-∥
-2
-	​
+Although the dataset contains temporal temperature measurements, the regression models in this experiment use the geographic features to learn the spatial relationship between location and temperature at a selected time step.
 
-)
+---
 
-Two bandwidths were investigated:
+# 3. Bayesian Linear Regression
 
-Bandwidth	Behaviour
-ℓ = 0.3	Local, highly sensitive spatial predictions
-ℓ = 1.5	Smoother, more global spatial predictions
+## Model
 
-The GP provides:
+Bayesian Linear Regression (BLR) was implemented **from scratch using NumPy**.
 
-Predictive mean
-Predictive variance
-Location-dependent uncertainty
+A zero-mean isotropic Gaussian prior was placed over the model weights:
 
-The larger bandwidth, ℓ = 1.5, produced smoother and more spatially coherent predictions and was selected for the final ice-warning and active-learning analyses.
+$$
+w \sim \mathcal{N}(0,\alpha^{-1}I)
+$$
 
-Bayesian Linear Regression vs Gaussian Process
+where $\alpha$ controls the strength of the prior.
 
-The models were evaluated on the test data using Mean Squared Error (MSE) and Mean Absolute Error (MAE).
+The likelihood is modeled as:
 
-Model	MSE (°C²)	MAE (°C)
-BLR	12.54	2.85
-GP — Spatial Only	16.35	3.16
-GP — Full Features	13.00	2.99
-Main finding
+$$
+y \sim \mathcal{N}(Xw,\beta^{-1}I)
+$$
 
-BLR achieved the lowest MAE in this experiment.
+where $\beta$ is the noise precision.
 
-This is likely related to the approximately linear relationship between temperature and the geographic features used by the model, together with the relatively small number of training stations.
+The posterior covariance is:
 
-However, accuracy was not the only important consideration.
+$$
+S_N =
+(\alpha I + \beta X^T X)^{-1}
+$$
 
-Predictive Uncertainty
+and the posterior mean is:
 
-A major difference between BLR and GP is how they represent uncertainty.
+$$
+m_N =
+\beta S_N X^T y
+$$
 
-Model	Average Uncertainty
-BLR	~0.20°C
-GP — Spatial Only	~0.73°C
-GP — Full Features	~0.77°C
+## Training Setup
 
-BLR produced nearly uniform uncertainty across Austria.
+The model was trained using:
 
-In contrast, GP uncertainty varied spatially according to the availability of nearby observations.
+* Longitude
+* Latitude
+* Altitude
+* 199 weather stations
+* A selected temperature timestep as the target
+* Standardized input features
 
-Regions close to weather stations generally had lower uncertainty, while remote areas had substantially higher uncertainty.
+## Prediction
 
-For the GP analysis, uncertainty ranged approximately from 0.72°C to 4.76°C.
+For a new location $x_*$, the predictive mean is:
 
-The correlation between distance to the nearest weather station and predictive uncertainty was approximately 0.92, while altitude had only a weak correlation of approximately −0.11.
+$$
+\mu(x_*) = x_*^T m_N
+$$
 
-This indicates that, in this experiment, distance to existing observations was a much stronger driver of uncertainty than altitude.
+The predictive variance is:
 
-Ice Warning System
+$$
+\sigma^2(x_*) =
+\frac{1}{\beta}
++
+x_*^T S_N x_*
+$$
 
-A probabilistic ice-warning system was developed using Gaussian Process predictions.
+Therefore, BLR provides both:
 
-For each grid location, the GP produces a Gaussian temperature distribution:
+* Expected temperature
+* Predictive uncertainty
 
-T∼N(μ,σ
-2
-)
+---
 
-The probability of freezing is then calculated as:
+# 4. Gaussian Process Regression
 
-P(T≤0
-∘
-C)
+## Model
 
-A warning is issued when:
+Gaussian Process Regression was also implemented **from scratch using NumPy**.
 
-P(T≤0
-∘
-C)≥0.8
-Warning Results
+An RBF (Radial Basis Function) kernel was used:
 
-Both GP bandwidths were evaluated.
-
-GP bandwidth	Warning grid points	Percentage
-ℓ = 0.3	361	3.6%
-ℓ = 1.5	2,156	21.6%
-
-The ℓ = 1.5 model was selected for the final warning analysis because it produced more spatially coherent warning regions.
-
-Final Risk Classification
-Risk level	Probability	Grid points	Proportion
-High	> 80%	2,156	21.6%
-Medium	20–80%	792	7.9%
-Low	≤ 20%	7,052	70.5%
-
-The high-risk areas were concentrated mainly in colder and higher-altitude regions, particularly mountainous areas.
-
-Active Learning for Weather Station Placement
-
-An active-learning strategy was implemented to identify 100 informative locations for potential weather-station placement.
-
-The initial candidate set consisted of the 10,000 grid points. Only locations inside Austria were considered for realistic station placement.
-
-The greedy procedure repeatedly:
-
-Computes the GP predictive variance at candidate locations.
-Selects the location with the highest variance.
-Adds that location to the selected set.
-Updates the GP posterior.
-Repeats until 100 locations have been selected.
-
-The objective is to place new stations where additional observations would provide the most information.
-
-Bandwidth Comparison
-Metric	ℓ = 0.3	ℓ = 1.5
-Average station distance	276 km	316 km
-Average altitude	1,271 m	1,239 m
-Spatial coverage	Moderate	High
-Sensitivity to local noise	Higher	Lower
-National-scale suitability	Moderate	Better
-
-The ℓ = 1.5 model was selected for the final active-learning result because it produced more uniform and coherent spatial coverage across Austria.
-
-The selected locations were distributed across western mountainous regions, central Austria, and eastern lowlands.
-
-Effect of Altitude
-
-Altitude was investigated as an important geographic feature because of the strong topographic variation across Austria.
-
-For mountainous regions above 1,500 m:
-
-Model	Predictive uncertainty
-GP Spatial Only	1.0550°C
-GP Full Features	1.3485°C
-
-Including altitude improved the mean prediction, but in this experiment it increased predictive variance in mountainous regions by approximately 27.8%.
-
-This can occur because adding altitude changes the geometry of the feature space used by the RBF kernel. Large altitude differences can make locations appear less similar under the kernel, reducing the amount of information transferred between observations.
-
-Computational Comparison
-
-BLR and GP have significantly different computational costs.
-
-Bayesian Linear Regression
-
-BLR primarily operates on the feature dimension and scales approximately as:
-
-O(ND
-2
-)
+$$
+k(x,x') =
+\sigma_f^2
+\exp
+\left(
+-\frac{|x-x'|^2}{2\ell^2}
+\right)
+$$
 
 where:
 
-N = number of observations
-D = number of features
-Gaussian Process
+* $\sigma_f^2$ is the signal variance.
+* $\ell$ is the length scale or bandwidth.
+* $x$ and $x'$ are two input locations.
 
-GP requires operations involving the N×N kernel matrix and therefore has approximately cubic complexity:
+The GP predictive mean is:
 
-O(N
-3
-)
+$$
+\mu(x_*) =
+K(x_*,X)
+\left[
+K(X,X)+\sigma_n^2I
+\right]^{-1}
+y
+$$
 
-In the timing experiment, GP was approximately 135× slower than BLR with 199 weather stations.
+The predictive variance is:
 
-Model	Computational cost	Main advantage
-BLR	Lower	Fast and accurate in this experiment
-GP	Higher	Flexible predictions and spatial uncertainty
-Key Findings
-1. BLR achieved the best predictive accuracy
+$$
+\sigma^2(x_*) =
+k(x_*,x_*)
+----------
 
-BLR achieved an MAE of 2.85°C, outperforming both GP configurations tested.
+K(x_*,X)
+\left[
+K(X,X)+\sigma_n^2I
+\right]^{-1}
+K(X,x_*)
+$$
 
-2. GP provides more informative uncertainty
+where $\sigma_n^2$ represents the observation-noise variance.
 
-Although GP had higher average uncertainty, its uncertainty was spatially varying and strongly related to the availability of nearby observations.
+---
 
-3. The larger GP bandwidth performed better spatially
+# 5. GP Bandwidth Experiments
 
-The ℓ = 1.5 configuration produced smoother and more physically plausible spatial predictions than ℓ = 0.3.
+Two RBF bandwidths were investigated.
 
-4. Distance to observations strongly affects uncertainty
+| Bandwidth    | Behaviour                  |
+| ------------ | -------------------------- |
+| $\ell = 0.3$ | Local and highly sensitive |
+| $\ell = 1.5$ | Smooth and more global     |
 
-The correlation between nearest-station distance and uncertainty was approximately 0.92, indicating that data coverage is a major determinant of prediction confidence.
+## GP with $\ell = 0.3$
 
-5. Altitude improves the mean prediction but can increase uncertainty
+The small bandwidth produced highly localized temperature predictions.
 
-Adding altitude helped represent Austria's topography, but it increased predictive variance in high-altitude regions in the tested GP configuration.
+The resulting temperature map contained many small warm and cold regions, indicating strong local variation.
 
-6. Active learning identifies high-value locations
+This allows the GP to capture fine-grained spatial differences but also makes it more sensitive to noise and sparse observations.
 
-The active-learning procedure placed candidate stations in areas where the GP was most uncertain, producing broad spatial coverage rather than simply clustering stations around existing observations.
+The uncertainty increases substantially in areas far from weather stations.
 
-Visualizations
+## GP with $\ell = 1.5$
 
-The notebook produces visualizations covering:
+The larger bandwidth produced smoother and more continuous temperature predictions.
 
-Weather-station locations across Austria
-Temperature trends at individual stations
-BLR temperature prediction maps
-BLR predictive uncertainty
-GP mean predictions for different bandwidths
-GP uncertainty maps
-Ice-warning probability maps
-Ice-risk classification
-Observed station temperatures
-Active-learning station locations
-Model predictions versus observations
-Uncertainty versus altitude
-Uncertainty versus distance to the nearest station
-How to Run
-1. Clone the repository
+The spatial temperature pattern was more structured, with:
+
+* Colder regions in mountainous areas.
+* Warmer temperatures in lowland areas.
+* Smoother transitions between neighbouring locations.
+
+The uncertainty was also more spatially coherent.
+
+For this project, $\ell = 1.5$ was selected for the final ice-warning and active-learning analyses because it provided a better balance between smoothness and spatial flexibility.
+
+---
+
+# 6. BLR vs GP
+
+## Predictive Accuracy
+
+The models were evaluated using Mean Squared Error (MSE) and Mean Absolute Error (MAE).
+
+| Model              | MSE (°C²) | MAE (°C) |
+| ------------------ | --------: | -------: |
+| BLR                | **12.54** | **2.85** |
+| GP — Spatial Only  |     16.35 |     3.16 |
+| GP — Full Features |     13.00 |     2.99 |
+
+### Interpretation
+
+BLR achieved the lowest MAE in this experiment.
+
+This suggests that the temperature relationship represented by the available geographic features was sufficiently close to a linear relationship for BLR to perform very well.
+
+The GP models provide greater flexibility but require appropriate kernel hyperparameters.
+
+The GP using only spatial coordinates performed worst because it excluded altitude, which is an important physical factor for temperature variation in Austria.
+
+---
+
+# 7. Predictive Uncertainty
+
+One of the most important differences between BLR and GP is their treatment of uncertainty.
+
+| Model              | Average Uncertainty |
+| ------------------ | ------------------: |
+| BLR                |             ~0.20°C |
+| GP — Spatial Only  |             ~0.73°C |
+| GP — Full Features |             ~0.77°C |
+
+BLR produced nearly uniform uncertainty across the prediction grid.
+
+This occurs because BLR assumes a global linear relationship and learns one posterior distribution over the model weights.
+
+Gaussian Processes produce **location-dependent uncertainty**.
+
+Regions close to observations tend to have lower uncertainty, while regions far from weather stations have higher uncertainty.
+
+The GP uncertainty analysis produced values ranging approximately from:
+
+**0.72°C to 4.76°C**
+
+The correlation between distance to the nearest weather station and predictive uncertainty was approximately:
+
+**0.92**
+
+The correlation between altitude and predictive uncertainty was approximately:
+
+**-0.11**
+
+This indicates that, in this experiment, **distance to available observations was a much stronger driver of uncertainty than altitude**.
+
+---
+
+# 8. Effect of Altitude
+
+Altitude was specifically investigated because Austria contains large differences in elevation.
+
+For mountainous regions above 1,500 m, predictive uncertainty was measured as:
+
+| Model            | Uncertainty |
+| ---------------- | ----------: |
+| GP Spatial Only  |    1.0550°C |
+| GP Full Features |    1.3485°C |
+
+Including altitude improved the mean prediction, but it increased predictive variance in these mountainous regions by approximately **27.8%**.
+
+This can occur because altitude changes the geometry of the input space used by the RBF kernel. Large differences in altitude can increase the effective distance between observations and prediction locations, reducing their similarity under the kernel.
+
+Therefore, in this experiment:
+
+* Altitude improved the spatial temperature representation.
+* Altitude did not reduce GP uncertainty in mountainous regions.
+* The effect of altitude on uncertainty was more complex than its effect on the predictive mean.
+
+---
+
+# 9. Probabilistic Ice-Warning System
+
+A probabilistic ice-warning system was implemented using the Gaussian Process model.
+
+For every prediction location, the GP produces a Gaussian temperature distribution:
+
+$$
+T \sim \mathcal{N}(\mu,\sigma^2)
+$$
+
+The probability that the temperature is at or below freezing is:
+
+$$
+P(T \leq 0^\circ C)
+$$
+
+A warning is issued when:
+
+$$
+P(T \leq 0^\circ C) \geq 0.8
+$$
+
+This means a location is classified as high risk when the model estimates at least an **80% probability of freezing temperatures**.
+
+---
+
+# 10. Ice-Warning Results
+
+Both GP bandwidths were tested.
+
+| GP Bandwidth | Warning Points | Percentage |
+| ------------ | -------------: | ---------: |
+| $\ell = 0.3$ |            361 |       3.6% |
+| $\ell = 1.5$ |          2,156 |      21.6% |
+
+The $\ell = 1.5$ model was selected for the final warning map because it produced more spatially coherent warning zones.
+
+## Final Risk Classification
+
+| Risk Level | Probability | Grid Points | Proportion |
+| ---------- | ----------- | ----------: | ---------: |
+| High       | > 80%       |       2,156 |      21.6% |
+| Medium     | 20% – 80%   |         792 |       7.9% |
+| Low        | ≤ 20%       |       7,052 |      70.5% |
+
+The high-risk areas were concentrated mainly in colder and higher-altitude regions, particularly mountainous areas.
+
+The resulting spatial pattern is physically reasonable because temperature generally decreases with increasing altitude.
+
+---
+
+# 11. Active Learning for Weather Station Placement
+
+An active-learning strategy was developed to identify **100 informative candidate locations** for potential additional weather stations.
+
+The initial candidate set consisted of the 10,000 grid locations.
+
+Only candidate points within Austria were retained for realistic station placement.
+
+## Selection Strategy
+
+The algorithm starts with an empty set of selected locations.
+
+At each iteration:
+
+1. Compute the GP predictive variance at all remaining candidate locations.
+2. Select the location with the highest predictive variance.
+3. Add that location to the selected set.
+4. Update the GP posterior.
+5. Repeat until 100 locations have been selected.
+
+The next location is selected according to:
+
+$$
+x_{\text{next}}
+===============
+
+\arg\max_{x \in \mathcal{X}_{\text{candidate}}}
+\sigma^2(x)
+$$
+
+This strategy prioritizes areas where the model is most uncertain.
+
+---
+
+# 12. Active Learning Results
+
+Two GP bandwidths were compared.
+
+| Metric                     | $\ell = 0.3$ | $\ell = 1.5$ |
+| -------------------------- | -----------: | -----------: |
+| Average station distance   |       276 km |   **316 km** |
+| Average altitude           |      1,271 m |      1,239 m |
+| Spatial coverage           |     Moderate |     **High** |
+| Sensitivity to local noise |       Higher |    **Lower** |
+| National-scale suitability |     Moderate |   **Better** |
+
+The $\ell = 1.5$ model was selected for the final station-placement analysis.
+
+The selected locations were distributed across:
+
+* Western mountainous regions
+* Central Austria
+* Eastern lowlands
+
+The selected stations were generally spread out rather than concentrated in a single region.
+
+This occurs because once a location is selected, the predictive variance around that location decreases, making nearby locations less informative.
+
+---
+
+# 13. Computational Trade-Off
+
+BLR and GP have substantially different computational requirements.
+
+## Bayesian Linear Regression
+
+BLR scales approximately with:
+
+$$
+O(ND^2)
+$$
+
+where:
+
+* $N$ = number of observations
+* $D$ = number of features
+
+Because the number of features is small, BLR is computationally efficient.
+
+## Gaussian Process
+
+GP requires operations involving the $N \times N$ kernel matrix and therefore has approximately cubic computational complexity:
+
+$$
+O(N^3)
+$$
+
+In the timing experiment, GP was approximately **135× slower than BLR** for the 199 weather stations.
+
+| Model | Computational Cost | Main Advantage                               |
+| ----- | ------------------ | -------------------------------------------- |
+| BLR   | Low                | Fast and accurate                            |
+| GP    | High               | Flexible predictions and spatial uncertainty |
+
+---
+
+# 14. Key Findings
+
+## Finding 1 — BLR achieved the best accuracy
+
+BLR achieved an MAE of **2.85°C**, which was lower than both GP configurations tested.
+
+## Finding 2 — GP provides richer uncertainty information
+
+Although GP produced higher average uncertainty than BLR, its uncertainty varied according to the spatial distribution of observations.
+
+This makes GP uncertainty more informative for identifying poorly observed regions.
+
+## Finding 3 — The larger GP bandwidth performed better spatially
+
+The $\ell = 1.5$ model generated smoother and more spatially coherent temperature predictions than $\ell = 0.3$.
+
+## Finding 4 — Distance to observations strongly affects uncertainty
+
+The correlation between nearest-station distance and predictive uncertainty was approximately **0.92**.
+
+This indicates that data availability is a major factor determining prediction confidence.
+
+## Finding 5 — Altitude affects the GP differently from spatial distance
+
+Adding altitude improved the representation of temperature variation but increased predictive uncertainty in the high-altitude region investigated.
+
+## Finding 6 — Active learning identifies informative locations
+
+The active-learning approach selected locations where the GP was most uncertain, producing broader spatial coverage and reducing redundant station placement.
+
+---
+
+# 15. Overall Model Comparison
+
+| Aspect                           | BLR            | GP — Spatial Only | GP — Full Features |
+| -------------------------------- | -------------- | ----------------- | ------------------ |
+| Accuracy                         | **Best**       | Lowest            | Medium             |
+| Flexibility                      | Low            | High              | High               |
+| Uncertainty                      | Nearly uniform | Spatially varying | Spatially varying  |
+| Altitude                         | Yes            | No                | Yes                |
+| Computational cost               | **Low**        | High              | High               |
+| Suitable for uncertainty mapping | Limited        | Good              | **Good**           |
+
+### Overall Interpretation
+
+BLR performed best in terms of predictive accuracy for this particular dataset and experiment.
+
+However, Gaussian Processes provide a major advantage in **spatially varying uncertainty estimation**.
+
+Therefore, the choice between the models depends on the application:
+
+* **BLR** is attractive when computational efficiency and predictive accuracy are the main priorities.
+* **GP** is more useful when understanding where predictions are uncertain is important.
+
+For applications such as ice-warning systems and weather-station placement, the spatial uncertainty information provided by GP is particularly valuable.
+
+---
+
+# 16. Visualizations
+
+The notebook generates visualizations covering:
+
+* Weather station locations across Austria
+* Temperature trends at individual stations
+* BLR mean temperature predictions
+* BLR predictive uncertainty
+* GP mean predictions
+* GP uncertainty maps
+* Comparison of GP bandwidths
+* Ice-warning probability maps
+* Ice-risk classification
+* Observed station temperatures
+* Active-learning station locations
+* Predictions versus ground truth
+* Uncertainty versus altitude
+* Uncertainty versus distance to the nearest station
+
+---
+
+# 17. How to Run
+
+## 1. Clone the repository
+
+```bash
 git clone https://github.com/wishalfatima/Weather-Prediction-using-BLR-and-GP.git
-2. Enter the project directory
+```
+
+## 2. Enter the project directory
+
+```bash
 cd Weather-Prediction-using-BLR-and-GP
-3. Install dependencies
+```
+
+## 3. Install the dependencies
+
+```bash
 pip install -r requirements.txt
-4. Add the dataset
+```
 
-Place the required HDF5 dataset in the project directory using the expected filename:
+## 4. Add the dataset
 
+Place the required HDF5 dataset in the project directory:
+
+```text
 weather_data.h5
-5. Run the notebook
-jupyter notebook weather_assignment.ipynb
+```
+
+If the dataset is not included in the repository, obtain it separately and place it in the expected location.
+
+## 5. Start Jupyter Notebook
+
+```bash
+jupyter notebook
+```
+
+Open:
+
+```text
+weather_assignment.ipynb
+```
 
 Execute the notebook cells in order.
 
-Implementation
+---
 
-The main models were implemented from scratch rather than relying on ready-made BLR or GP regression implementations.
+# 18. Technologies
 
-Implemented components
-Bayesian Linear Regression
-Gaussian Process Regression
-RBF kernel
-Predictive mean and variance calculations
-Probabilistic ice-warning system
-Greedy active-learning algorithm
-Spatial uncertainty analysis
-Model comparison and evaluation
+The project uses:
 
-The project uses common scientific Python libraries for data handling, preprocessing, numerical computation, and visualization.
+* **Python**
+* **NumPy**
+* **SciPy**
+* **Pandas**
+* **Scikit-learn**
+* **Matplotlib**
+* **GeoPandas**
+* **h5py**
+* **Jupyter Notebook**
 
-Technologies
-Python
-NumPy
-SciPy
-Pandas
-Scikit-learn
-Matplotlib
-GeoPandas
-h5py
-Jupyter Notebook
-Repository
+The BLR and GP regression models were implemented from scratch using NumPy.
 
-GitHub:
-https://github.com/wishalfatima/Weather-Prediction-using-BLR-and-GP
+---
 
-Author
+# 19. Implementation Highlights
 
-Wishal Fatima
+### Bayesian Linear Regression
+
+Implemented manually using:
+
+* Gaussian prior
+* Posterior mean
+* Posterior covariance
+* Predictive mean
+* Predictive variance
+
+### Gaussian Process
+
+Implemented manually using:
+
+* RBF kernel
+* Kernel matrix construction
+* GP posterior mean
+* GP posterior variance
+* Multiple bandwidth experiments
+
+### Probabilistic Ice Warning
+
+Implemented using:
+
+* GP predictive mean
+* GP predictive variance
+* Gaussian freezing probability
+* 80% warning threshold
+
+### Active Learning
+
+Implemented using:
+
+* Predictive variance
+* Greedy maximum-uncertainty selection
+* Iterative GP posterior updates
+* Selection of 100 candidate station locations
+
+---
+
+# 20. Repository
+
+**GitHub Repository:**
+
+[https://github.com/wishalfatima/Weather-Prediction-using-BLR-and-GP](https://github.com/wishalfatima/Weather-Prediction-using-BLR-and-GP)
+
+---
+
+# 21. Author
+
+**Wishal Fatima**
 
 University of Vienna
 Master's Programme in Computer Science
 
-This project was completed as part of the Probabilistic Artificial Intelligence course at the University of Vienna.
+This project was completed as part of the **Probabilistic Artificial Intelligence** course at the University of Vienna.
 
-License
+---
 
-This project is intended for educational and academic purposes.
+# License
+
+This project is intended for **educational and academic purposes**.
+:::
